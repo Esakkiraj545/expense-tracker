@@ -26,9 +26,11 @@ app.get('/', (req, res) => {
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
 
 // Use Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/expenses', expenseRoutes);
 
 // Error Handler
 app.use(errorHandler);
