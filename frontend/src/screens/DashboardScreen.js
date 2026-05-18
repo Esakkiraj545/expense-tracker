@@ -1,24 +1,85 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { Bell, ChevronDown, Utensils, Car, FileText, LayoutGrid, Wallet, CreditCard, Plane, User } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 const { width } = Dimensions.get('window');
 
-const DashboardScreen = () => {
+const DashboardScreen = ({ navigation }) => {
+  const [userName, setUserName] = useState('User');
+  const [profileImage, setProfileImage] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      if (!token) return;
+
+      const [profileRes, notificationsRes] = await Promise.all([
+        axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${process.env.EXPO_PUBLIC_API_URL}/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      if (profileRes.data.success) {
+        setUserName(profileRes.data.data.name);
+        setProfileImage(profileRes.data.data.profileImage || '');
+      }
+
+      if (notificationsRes.data.success) {
+        const count = notificationsRes.data.data.filter(n => !n.isRead).length;
+        setUnreadCount(count);
+      }
+    } catch (error) {
+      console.log('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  );
+
   return (
     <View className="flex-1 bg-[#F8F9FF]">
       {/* Header */}
-      <View className="px-6 pt-14 pb-6 bg-white flex-row justify-between items-center">
+      <View className="px-6 pt-14 pb-6 bg-white flex-row justify-between items-center border-b border-[#F0F2FA]">
         <View className="flex-row items-center">
-          <View className="w-10 h-10 rounded-full bg-[#2E3A9D] items-center justify-center mr-3">
-            <User size={20} color="white" />
+          <View className="w-10 h-10 rounded-full bg-[#EBF0FF] items-center justify-center mr-3 overflow-hidden border border-[#2E3A9D]/15 shadow-sm">
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} className="w-full h-full" resizeMode="cover" />
+            ) : (
+              <User size={20} color="#2E3A9D" />
+            )}
           </View>
-          <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#2E3A9D] text-lg">
-            Hi, Aryan
-          </Text>
+          <View>
+            <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px]">Welcome back,</Text>
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-base">
+              {loading ? '...' : userName}
+            </Text>
+          </View>
         </View>
-        <TouchableOpacity className="p-2 border border-[#E0E4F5] rounded-xl">
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Notifications')}
+          className="p-2 border border-[#E0E4F5] rounded-xl relative"
+        >
           <Bell size={20} color="#2E3A9D" />
+          {unreadCount > 0 && (
+            <View className="absolute -top-1.5 -right-1.5 bg-[#FF5252] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
+              <Text className="text-white text-[8px]" style={{ fontFamily: 'Poppins-Bold' }}>
+                {unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -124,6 +185,5 @@ const DashboardScreen = () => {
     </View>
   );
 };
-
 
 export default DashboardScreen;

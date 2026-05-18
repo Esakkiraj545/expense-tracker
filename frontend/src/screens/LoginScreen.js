@@ -128,41 +128,11 @@ const LoginScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View className="flex-row items-center my-8">
-              <View className="flex-1 h-[1px] bg-[#E0E4F5]" />
-              <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="mx-4 text-[#8A94A6] text-xs">OR</Text>
-              <View className="flex-1 h-[1px] bg-[#E0E4F5]" />
-            </View>
-
-            {/* Social Buttons */}
-            <View className="flex-row space-x-4">
-              <TouchableOpacity 
-                onPress={() => Alert.alert('Google Login', 'Google Sign-In will be implemented after configuring Firebase/Google Console.')}
-                className="flex-1 flex-row items-center justify-center border border-[#E0E4F5] py-3 rounded-2xl bg-white mr-2"
-              >
-                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} style={{ width: 20, height: 20 }} />
-                <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="ml-2 text-[#444B59]">Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => {
-                  if(!email) {
-                    Alert.alert('Error', 'Please enter email to receive OTP');
-                    return;
-                  }
-                  navigation.navigate('OTPScreen', { email });
-                }}
-                className="flex-1 flex-row items-center justify-center border border-[#E0E4F5] py-3 rounded-2xl bg-white ml-2"
-              >
-                <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#444B59]">OTP</Text>
-              </TouchableOpacity>
-            </View>
-
           </View>
 
           {/* Footer Text */}
           <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px] text-center mt-8 px-10">
-            By continuing, you agree to WealthFlow's{' '}
+            By continuing, you agree to Xpenso's{' '}
             <Text className="text-[#2E3A9D] font-bold">Terms of Service</Text> and{' '}
             <Text className="text-[#2E3A9D] font-bold">Privacy Policy</Text>.
           </Text>

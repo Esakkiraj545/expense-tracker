@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Dimensions, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Dimensions, ActivityIndicator, RefreshControl, Platform, Image } from 'react-native';
 import { Search, Bell, Filter, Utensils, Car, Home, Play, Plus, User, ShoppingBag, MoreHorizontal, CreditCard, Wallet, Calendar as CalendarIcon, ChevronRight } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,6 +10,7 @@ const { width } = Dimensions.get('window');
 
 const ExpensesScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
+  const [profileImage, setProfileImage] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -36,11 +37,20 @@ const ExpensesScreen = ({ navigation }) => {
   const fetchExpenses = async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/expenses`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        setExpenses(response.data.data);
+      const [expensesRes, profileRes] = await Promise.all([
+        axios.get(`${process.env.EXPO_PUBLIC_API_URL}/expenses`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => null)
+      ]);
+
+      if (expensesRes.data.success) {
+        setExpenses(expensesRes.data.data);
+      }
+      if (profileRes && profileRes.data?.success) {
+        setProfileImage(profileRes.data.data.profileImage || '');
       }
     } catch (error) {
       console.log('Error fetching expenses:', error);
@@ -118,10 +128,14 @@ const ExpensesScreen = ({ navigation }) => {
       <View className="bg-white shadow-sm z-20">
         <View className="px-6 pt-14 pb-4 flex-row justify-between items-center border-b border-[#F0F2FA]">
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-full bg-[#2E3A9D] items-center justify-center mr-2">
-              <User size={16} color="white" />
+            <View className="w-8 h-8 rounded-full bg-[#EBF0FF] items-center justify-center mr-2 overflow-hidden border border-[#2E3A9D]/15 shadow-sm">
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} className="w-full h-full" resizeMode="cover" />
+              ) : (
+                <User size={16} color="#2E3A9D" />
+              )}
             </View>
-            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-base">Expenses</Text>
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-base">Xpenso</Text>
           </View>
           <TouchableOpacity className="p-2 border border-[#E0E4F5] rounded-xl">
             <Bell size={18} color="#2E3A9D" />
@@ -217,7 +231,7 @@ const ExpensesScreen = ({ navigation }) => {
             <>
               <View className="flex-row justify-between items-center mb-6">
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px]">{selectedTimeFilter} Summary</Text>
-                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-sm">-₹{totalAmount.toLocaleString()}</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-sm">-₹{(totalAmount || 0).toLocaleString()}</Text>
               </View>
 
               {filteredExpenses.map((item, i) => {
@@ -237,7 +251,7 @@ const ExpensesScreen = ({ navigation }) => {
                       <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px]" numberOfLines={1}>{item.note || 'No note added'}</Text>
                     </View>
                     <View className="items-end">
-                      <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-sm">-₹{parseFloat(item.amount).toLocaleString()}</Text>
+                      <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-sm">-₹{parseFloat(item.amount || 0).toLocaleString()}</Text>
                       <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#8A94A6] text-[8px]">{new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
                     </View>
                   </TouchableOpacity>
@@ -251,7 +265,7 @@ const ExpensesScreen = ({ navigation }) => {
             <View className="bg-[#2E3A9D] rounded-[32px] p-6 mt-10 mb-32 flex-row justify-between items-center shadow-lg">
               <View>
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white/60 text-[10px] uppercase tracking-[1px]">Total Selected Period</Text>
-                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-2xl">₹{totalAmount.toLocaleString()}</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-2xl">₹{(totalAmount || 0).toLocaleString()}</Text>
               </View>
               <TouchableOpacity className="bg-white px-5 py-3 rounded-2xl">
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-[10px] uppercase">Details</Text>

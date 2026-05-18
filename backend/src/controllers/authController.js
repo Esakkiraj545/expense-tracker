@@ -118,6 +118,69 @@ exports.login = async (req, res, next) => {
   }
 };
 
+// @desc    Get current logged in user
+// @route   GET /api/v1/auth/me
+// @access  Private
+exports.getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Update user details
+// @route   PUT /api/v1/auth/updatedetails
+// @access  Private
+exports.updateDetails = async (req, res, next) => {
+  try {
+    const fieldsToUpdate = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      dob: req.body.dob,
+      bio: req.body.bio,
+      profileImage: req.body.profileImage
+    };
+
+    // Remove undefined fields
+    Object.keys(fieldsToUpdate).forEach(key => fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]);
+
+    const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+      new: true,
+      runValidators: true
+    });
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete user account
+// @route   DELETE /api/v1/auth/deleteme
+// @access  Private
+exports.deleteMe = async (req, res, next) => {
+  try {
+    await User.findByIdAndDelete(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
   // Create token

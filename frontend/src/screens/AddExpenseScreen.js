@@ -1,69 +1,79 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
-import { X, Utensils, Car, ShoppingBag, Play, Home, MoreHorizontal, Calendar, CreditCard, Wallet, Camera, Check, ChevronRight } from 'lucide-react-native';
-
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Image } from 'react-native';
+import { ChevronLeft, Utensils, Home, Car, Fuel, ShoppingBag, Plus, Calendar, CreditCard, Wallet, Smartphone, Camera, X, Check, Save, User } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const AddExpenseScreen = ({ navigation }) => {
+const CATEGORIES = [
+  { id: 'Food', name: 'Food', icon: Utensils, color: '#FF9F43' },
+  { id: 'Stay', name: 'Stay', icon: Home, color: '#4834D4' },
+  { id: 'Transport', name: 'Transport', icon: Car, color: '#6AB04C' },
+  { id: 'Fuel', name: 'Fuel', icon: Fuel, color: '#EB4D4B' },
+  { id: 'Shopping', name: 'Shopping', icon: ShoppingBag, color: '#F093FB' },
+  { id: 'Others', name: 'Others', icon: Plus, color: '#8A94A6' },
+];
+
+const PAYMENT_METHODS = [
+  { id: 'UPI', name: 'UPI', icon: Smartphone },
+  { id: 'Cash', name: 'Cash', icon: Wallet },
+  { id: 'Card', name: 'Card', icon: CreditCard },
+];
+
+const AddExpenseScreen = ({ route, navigation }) => {
+  const { tripId } = route.params;
+  const [trip, setTrip] = useState(null);
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Food');
-  const [otherCategory, setOtherCategory] = useState('');
-  const [note, setNote] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [selectedCategory, setSelectedCategory] = useState('Food');
+  const [customCategory, setCustomCategory] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [selectedPayer, setSelectedPayer] = useState(null); // Will store user ID
   const [date, setDate] = useState(new Date());
+  const [note, setNote] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  React.useEffect(() => {
+    const fetchTripMembers = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips/${tripId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setTrip(response.data.data);
+          // Set default payer as trip owner
+          setSelectedPayer(response.data.data.owner._id);
+        }
+      } catch (error) {
+        console.log('Error fetching trip members');
+      }
+    };
+    fetchTripMembers();
+  }, [tripId]);
 
-  const categories = [
-    { name: 'Food', icon: Utensils, color: '#FF9900', bg: '#FFF5E6' },
-    { name: 'Travel', icon: Car, color: '#2E3A9D', bg: '#E8EBF8' },
-    { name: 'Shop', icon: ShoppingBag, color: '#00A3FF', bg: '#E6F7FF' },
-    { name: 'Fun', icon: Play, color: '#FF5252', bg: '#FFE5E5' },
-    { name: 'Rent', icon: Home, color: '#4CAF50', bg: '#E8F5E9' },
-    { name: 'Other', icon: MoreHorizontal, color: '#8A94A6', bg: '#F0F2FA' },
-  ];
-
-  const onDateChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    setShowDatePicker(Platform.OS === 'ios');
-    setDate(currentDate);
-  };
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need access to your photos to upload attachments.');
+  const handleSaveExpense = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-      base64: true,
-    });
-
-    if (!result.canceled) {
-      setAttachment(result.assets[0].uri);
+    if (selectedCategory === 'Others' && !customCategory) {
+      Alert.alert('Error', 'Please enter a category name');
+      return;
     }
-  };
 
-  const handleSave = async () => {
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/expenses`, {
-        amount,
-        category,
-        otherCategory: category === 'Other' ? otherCategory : '',
-        note,
-        date,
+        trip: tripId,
+        amount: parseFloat(amount),
+        category: selectedCategory === 'Others' ? customCategory : selectedCategory,
         paymentMethod,
-        attachment
+        paidBy: selectedPayer,
+        date,
+        note
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -75,184 +85,183 @@ const AddExpenseScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.log('Error adding expense:', error);
-      Alert.alert('Error', 'Failed to save expense. Please try again.');
+      Alert.alert('Error', 'Failed to add expense');
     } finally {
       setLoading(false);
     }
   };
 
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) setDate(selectedDate);
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       className="flex-1 bg-[#F8F9FF]"
     >
-
-      <View className="px-6 pt-14 pb-4 bg-white flex-row justify-between items-center border-b border-[#F0F2FA]">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+      {/* Header */}
+      <View className="px-6 pt-14 pb-4 bg-white flex-row items-center justify-between border-b border-[#F0F2FA]">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
           <X size={24} color="#2E3A9D" />
         </TouchableOpacity>
-        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-lg">Add Expense</Text>
-        <View className="w-6" />
+        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-lg">Add Xpenso</Text>
+        <TouchableOpacity onPress={handleSaveExpense} disabled={loading}>
+           {loading ? <ActivityIndicator size="small" color="#2E3A9D" /> : <Check size={24} color="#2E3A9D" />}
+        </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Amount Input */}
-        <View className="items-center py-10">
-          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-xs uppercase tracking-[1px] mb-2">Amount Spent</Text>
-          <View className="flex-row items-center">
-            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-4xl mr-2">₹</Text>
-            <TextInput
-              placeholder="0.00"
-              placeholderTextColor="#E0E4F5"
-              className="text-[#2E3A9D] text-5xl"
-              style={{ fontFamily: 'Poppins-Bold' }}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              autoFocus
-            />
+        <View className="bg-white px-6 py-10 items-center border-b border-[#F0F2FA]">
+           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">Amount Spent</Text>
+           <View className="flex-row items-center">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-4xl mr-2">₹</Text>
+              <TextInput 
+                placeholder="0.00"
+                keyboardType="numeric"
+                className="text-[#1A1A1A] text-5xl"
+                style={{ fontFamily: 'Poppins-Bold' }}
+                value={amount}
+                onChangeText={setAmount}
+                autoFocus={true}
+              />
+           </View>
+        </View>
+
+        <View className="p-6">
+          {/* Who Paid Section - Only for Group Trips */}
+          {trip && trip.tripType !== 'solo' && (
+            <View className="mb-8">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Who Paid?</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-2 px-2">
+                {/* Owner */}
+                <TouchableOpacity 
+                  onPress={() => setSelectedPayer(trip.owner._id)}
+                  className={`items-center mr-4 p-3 rounded-2xl border-2 ${selectedPayer === trip.owner._id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+                >
+                  <View className={`w-10 h-10 rounded-full items-center justify-center mb-1 ${selectedPayer === trip.owner._id ? 'bg-white/20' : 'bg-[#E0E4F5]'}`}>
+                    <User size={20} color={selectedPayer === trip.owner._id ? 'white' : '#2E3A9D'} />
+                  </View>
+                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[8px] ${selectedPayer === trip.owner._id ? 'text-white' : 'text-[#444B59]'}`}>You</Text>
+                </TouchableOpacity>
+
+                {/* Other Members who have joined */}
+                {trip.members.filter(m => m.status === 'joined' && m.user).map((member) => (
+                  <TouchableOpacity 
+                    key={member.user._id}
+                    onPress={() => setSelectedPayer(member.user._id)}
+                    className={`items-center mr-4 p-3 rounded-2xl border-2 ${selectedPayer === member.user._id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+                  >
+                    <View className={`w-10 h-10 rounded-full items-center justify-center mb-1 ${selectedPayer === member.user._id ? 'bg-white/20' : 'bg-[#E0E4F5]'}`}>
+                      <User size={20} color={selectedPayer === member.user._id ? 'white' : '#2E3A9D'} />
+                    </View>
+                    <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[8px] ${selectedPayer === member.user._id ? 'text-white' : 'text-[#444B59]'}`}>
+                      {member.user.name || member.email.split('@')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Category Section */}
+          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Category</Text>
+          <View className="flex-row flex-wrap justify-between mb-6">
+             {CATEGORIES.map((cat) => (
+               <TouchableOpacity 
+                 key={cat.id}
+                 onPress={() => setSelectedCategory(cat.id)}
+                 className={`w-[31%] aspect-square rounded-[24px] items-center justify-center mb-3 border-2 ${selectedCategory === cat.id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+               >
+                  <View className={`p-3 rounded-2xl mb-1 ${selectedCategory === cat.id ? 'bg-white/20' : 'bg-[#F8F9FF]'}`}>
+                    <cat.icon size={24} color={selectedCategory === cat.id ? 'white' : cat.color} />
+                  </View>
+                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[10px] ${selectedCategory === cat.id ? 'text-white' : 'text-[#444B59]'}`}>{cat.name}</Text>
+               </TouchableOpacity>
+             ))}
           </View>
-        </View>
 
-        {/* Categories */}
-        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm mb-4">Select Category</Text>
-        <View className="flex-row flex-wrap justify-between">
-          {categories.map((cat) => (
+          {selectedCategory === 'Others' && (
+            <View className="mb-6">
+               <View className="bg-white border border-[#2E3A9D] rounded-2xl px-4 py-4 shadow-sm">
+                  <TextInput 
+                    placeholder="Enter category name (e.g., Gifts)"
+                    className="text-[#1A1A1A] text-sm"
+                    style={{ fontFamily: 'Poppins-SemiBold' }}
+                    value={customCategory}
+                    onChangeText={setCustomCategory}
+                  />
+               </View>
+            </View>
+          )}
+
+          {/* Payment Method */}
+          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Payment Method</Text>
+          <View className="flex-row justify-between mb-8">
+             {PAYMENT_METHODS.map((method) => (
+               <TouchableOpacity 
+                 key={method.id}
+                 onPress={() => setPaymentMethod(method.id)}
+                 className={`flex-1 flex-row items-center justify-center py-4 rounded-2xl mx-1 border ${paymentMethod === method.id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#E0E4F5]'}`}
+               >
+                  <method.icon size={16} color={paymentMethod === method.id ? 'white' : '#2E3A9D'} />
+                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`ml-2 text-xs ${paymentMethod === method.id ? 'text-white' : 'text-[#2E3A9D]'}`}>{method.name}</Text>
+               </TouchableOpacity>
+             ))}
+          </View>
+
+          {/* Date Picker */}
+          <View className="mb-8">
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">Date</Text>
             <TouchableOpacity 
-              key={cat.name}
-              onPress={() => setCategory(cat.name)}
-              style={{ width: '31%', marginBottom: 16 }}
-              className={`p-4 rounded-3xl items-center border ${category === cat.name ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+              onPress={() => setShowDatePicker(true)}
+              className="bg-white border border-[#E0E4F5] rounded-2xl px-4 py-4 shadow-sm flex-row items-center"
             >
-              <View style={{ backgroundColor: category === cat.name ? 'rgba(255,255,255,0.2)' : cat.bg }} className="p-3 rounded-2xl mb-2">
-                <cat.icon size={20} color={category === cat.name ? 'white' : cat.color} />
-              </View>
-              <Text style={{ fontFamily: 'Poppins-SemiBold' }} className={`text-[10px] ${category === cat.name ? 'text-white' : 'text-[#8A94A6]'}`}>{cat.name}</Text>
+               <Calendar size={18} color="#2E3A9D" />
+               <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="ml-3 text-[#1A1A1A]">
+                  {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+            {showDatePicker && <DateTimePicker value={date} mode="date" onChange={onDateChange} />}
+          </View>
 
-        {/* Other Category Input */}
-        {category === 'Other' && (
-          <View className="mb-6">
-            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2 ml-1">Custom Category Name</Text>
-            <View className="bg-white border border-[#E0E4F5] rounded-2xl px-4 py-4 shadow-sm">
+          {/* Bill Attachment */}
+          <View className="mb-8">
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">Bill Attachment</Text>
+            <TouchableOpacity className="bg-white border border-dashed border-[#2E3A9D] rounded-2xl p-8 items-center justify-center">
+               <Camera size={32} color="#2E3A9D" />
+               <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-xs mt-2">Take Photo or Upload Bill</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Notes */}
+          <View className="mb-10">
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">Notes</Text>
+            <View className="bg-white border border-[#E0E4F5] rounded-2xl px-4 py-4 shadow-sm h-32">
                <TextInput 
-                 placeholder="Enter category name"
-                 value={otherCategory} 
-                 onChangeText={setOtherCategory} 
-                 className="text-[#1A1A1A] text-sm" 
-                 style={{ fontFamily: 'Poppins-SemiBold' }} 
+                 placeholder="What was this for?"
+                 multiline textAlignVertical="top"
+                 className="flex-1 text-[#1A1A1A] text-sm"
+                 style={{ fontFamily: 'Poppins-Regular' }}
+                 value={note}
+                 onChangeText={setNote}
                />
             </View>
           </View>
-        )}
 
-        {/* Details Section */}
-        <View className="bg-white rounded-[32px] p-6 mb-8 border border-[#F0F2FA] shadow-sm">
-           {/* Date Picker */}
-           <TouchableOpacity 
-             onPress={() => setShowDatePicker(true)}
-             className="flex-row items-center py-4 border-b border-[#F8F9FF]"
-           >
-              <View className="bg-[#E8F5E9] p-2.5 rounded-xl mr-4">
-                 <Calendar size={18} color="#4CAF50" />
-              </View>
-              <View className="flex-1">
-                 <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#8A94A6] text-[10px] uppercase">Date</Text>
-                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">{date.toDateString()}</Text>
-              </View>
-              <ChevronRight size={18} color="#8A94A6" />
-           </TouchableOpacity>
-           
-           {showDatePicker && (
-             <DateTimePicker
-               value={date}
-               mode="date"
-               display="default"
-               onChange={onDateChange}
-             />
-           )}
-
-           {/* Payment Method */}
-           <View className="flex-row items-center py-4 border-b border-[#F8F9FF]">
-              <View className="bg-[#FFF5E6] p-2.5 rounded-xl mr-4">
-                 <CreditCard size={18} color="#FF9900" />
-              </View>
-              <View className="flex-1">
-                 <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#8A94A6] text-[10px] uppercase">Payment Method</Text>
-                 <View className="flex-row mt-2">
-                    {['Cash', 'Card', 'UPI'].map((m) => (
-                      <TouchableOpacity 
-                        key={m} 
-                        onPress={() => setPaymentMethod(m)}
-                        className={`px-4 py-1.5 rounded-full mr-2 ${paymentMethod === m ? 'bg-[#2E3A9D]' : 'bg-[#F0F2FA]'}`}
-                      >
-                         <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[9px] ${paymentMethod === m ? 'text-white' : 'text-[#8A94A6]'}`}>{m}</Text>
-                      </TouchableOpacity>
-                    ))}
-                 </View>
-              </View>
-           </View>
-
-           {/* Notes */}
-           <View className="py-4">
-              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2 ml-1">Add Note</Text>
-              <View className="bg-white border border-[#E0E4F5] rounded-2xl px-4 py-4 shadow-sm h-32 flex-row">
-                 <View className="bg-[#E6F7FF] p-2 rounded-xl mr-3 self-start">
-                    <X size={16} color="#00A3FF" style={{ transform: [{ rotate: '45deg' }] }} />
-                 </View>
-                 <TextInput
-                   placeholder="What was this for?"
-                   placeholderTextColor="#8A94A6"
-                   multiline
-                   value={note}
-                   onChangeText={setNote}
-                   style={{ fontFamily: 'Poppins-Regular', textAlignVertical: 'top' }}
-                   className="flex-1 text-[#1A1A1A] text-sm h-full"
-                 />
-              </View>
-           </View>
+          <TouchableOpacity 
+            onPress={handleSaveExpense}
+            disabled={loading}
+            className="bg-[#2E3A9D] py-5 rounded-[24px] flex-row items-center justify-center shadow-lg shadow-blue-500/50 mb-10"
+          >
+             {loading ? <ActivityIndicator color="white" /> : <><Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg mr-2">Save Xpenso</Text><Save size={20} color="white" /></>}
+          </TouchableOpacity>
         </View>
-
-
-        {/* Attachment */}
-        <TouchableOpacity 
-          onPress={pickImage}
-          className="bg-white border-2 border-dashed border-[#E0E4F5] rounded-[32px] p-8 items-center mb-10"
-        >
-          {attachment ? (
-            <View className="items-center">
-              <Image source={{ uri: attachment }} style={{ width: 100, height: 100, borderRadius: 16 }} />
-              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-[10px] mt-2">Change Image</Text>
-            </View>
-          ) : (
-            <>
-              <View className="bg-[#F0F2FA] p-4 rounded-full mb-3">
-                <Camera size={24} color="#8A94A6" />
-              </View>
-              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">Add Attachment</Text>
-              <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px]">Upload receipt or photo</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Save Button */}
-        <TouchableOpacity 
-          onPress={handleSave}
-          disabled={loading}
-          className="bg-[#2E3A9D] py-5 rounded-[24px] flex-row items-center justify-center shadow-xl shadow-blue-500/50 mb-10"
-        >
-          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg mr-2">
-            {loading ? 'Saving...' : 'Save Expense'}
-          </Text>
-          <Check size={20} color="white" />
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 export default AddExpenseScreen;
-

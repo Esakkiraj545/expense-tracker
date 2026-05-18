@@ -1,18 +1,75 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { ChevronLeft, Camera, User, Mail, Phone, Calendar, FileText } from 'lucide-react-native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
 
-const EditProfileScreen = ({ navigation }) => {
-  const [name, setName] = useState('Alex Johnson');
-  const [email, setEmail] = useState('alex.johnson@wealthflow.com');
-  const [phone, setPhone] = useState('+1 (555) 012-3456');
-  const [dob, setDob] = useState('05/14/1988');
-  const [bio, setBio] = useState('Passionate about achieving financial freedom and managing debt effectively. Focused on long-term wealth flow and sustainable saving habits.');
+const EditProfileScreen = ({ navigation, route }) => {
+  const { user } = route.params || {};
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [dob, setDob] = useState(user?.dob || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleChoosePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need storage permission to upload your profile picture.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true
+      });
+
+      if (!result.canceled && result.assets && result.assets[0].base64) {
+        setProfileImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      }
+    } catch (error) {
+      console.log('Error choosing image:', error);
+      Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name || !email) {
+      Alert.alert('Error', 'Name and Email are required.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await axios.put(
+        `${process.env.EXPO_PUBLIC_API_URL}/auth/updatedetails`,
+        { name, email, phone, dob, bio, profileImage },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Profile updated successfully!', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      }
+    } catch (error) {
+      console.log('Error updating profile:', error);
+      const message = error.response?.data?.message || 'Something went wrong';
+      Alert.alert('Update Failed', message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -32,13 +89,20 @@ const EditProfileScreen = ({ navigation }) => {
         <View className="p-6 items-center">
           {/* Avatar Section */}
           <View className="relative mb-10">
-             <View className="w-32 h-32 rounded-full bg-[#E0E4F5] border-4 border-white shadow-xl items-center justify-center">
-                <User size={64} color="#2E3A9D" />
+             <View className="w-32 h-32 rounded-full bg-[#E0E4F5] border-4 border-white shadow-xl items-center justify-center overflow-hidden">
+                {profileImage ? (
+                   <Image source={{ uri: profileImage }} className="w-full h-full" resizeMode="cover" />
+                ) : (
+                   <User size={64} color="#2E3A9D" />
+                )}
              </View>
-             <TouchableOpacity className="absolute bottom-1 right-1 bg-[#2E3A9D] w-10 h-10 rounded-full border-4 border-white items-center justify-center shadow-md">
+             <TouchableOpacity 
+               onPress={handleChoosePhoto}
+               className="absolute bottom-1 right-1 bg-[#2E3A9D] w-10 h-10 rounded-full border-4 border-white items-center justify-center shadow-md"
+             >
                 <Camera size={16} color="white" />
              </TouchableOpacity>
-             <TouchableOpacity className="mt-4">
+             <TouchableOpacity onPress={handleChoosePhoto} className="mt-4">
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-xs uppercase tracking-[1px] text-center">Change Photo</Text>
              </TouchableOpacity>
           </View>
@@ -114,9 +178,13 @@ const EditProfileScreen = ({ navigation }) => {
              {/* Save Button */}
              <TouchableOpacity 
                onPress={handleSave}
-               className="bg-[#2E3A9D] py-5 rounded-[24px] items-center shadow-lg shadow-blue-500/50 mt-10 mb-20"
+               disabled={saving}
+               className="bg-[#2E3A9D] py-5 rounded-[24px] items-center justify-center shadow-lg shadow-blue-500/50 mt-10 mb-20 flex-row"
              >
-                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg uppercase tracking-[1px]">Save Changes</Text>
+                {saving && <ActivityIndicator color="white" style={{ marginRight: 8 }} />}
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg uppercase tracking-[1px]">
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Text>
              </TouchableOpacity>
           </View>
         </View>

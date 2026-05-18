@@ -26,7 +26,7 @@ const MainTabNavigator = () => {
       }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Expenses" component={ExpensesScreen} />
+      <Tab.Screen name="Expenses" component={ExpensesScreen} options={{ tabBarLabel: 'Xpenso' }} />
       <Tab.Screen name="Debts" component={DebtsScreen} />
       <Tab.Screen name="Trips" component={TripsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

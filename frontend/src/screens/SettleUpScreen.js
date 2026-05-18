@@ -1,73 +1,137 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-import { ChevronLeft, MoreVertical, Info, Landmark, QrCode, Wallet, CheckCircle2, User } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { ChevronLeft, Info, Landmark, QrCode, Wallet, CheckCircle2, DollarSign } from 'lucide-react-native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
-const SettleUpScreen = ({ navigation }) => {
-  const [method, setMethod] = useState('BANK');
+const SettleUpScreen = ({ route, navigation }) => {
+  const { debt } = route.params || {};
+  const [amount, setAmount] = useState(debt?.remainingAmount !== undefined ? debt.remainingAmount.toString() : debt?.amount?.toString() || '');
+  const [method, setMethod] = useState('UPI');
+  const [loading, setLoading] = useState(false);
+  const [note, setNote] = useState('');
 
-  const participants = [
-    { id: 1, name: 'Sarah Jenkins', amount: 'You owe $150.00', action: 'PAY', color: '#FF5252' },
-    { id: 2, name: 'Marcus Chen', amount: 'You owe $80.00', action: 'PAY', color: '#FF5252' },
-    { id: 3, name: 'Elena Rodriguez', amount: 'Owes you $45.00', action: 'SETTLE', color: '#4CAF50' },
-  ];
+  if (!debt) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text>No debt record found</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 p-2 bg-[#2E3A9D] rounded-xl">
+            <Text className="text-white">Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-  const handleConfirm = () => {
-    Alert.alert('Settlement Recorded', 'Your transactions have been recorded successfully.', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+  const handleConfirm = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    const remaining = debt.remainingAmount !== undefined ? debt.remainingAmount : debt.amount;
+    if (parseFloat(amount) > remaining) {
+      Alert.alert('Error', 'Amount exceeds remaining balance');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/debts/${debt._id}/pay`, {
+        amount: parseFloat(amount),
+        paymentMethod: method,
+        note
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        const updatedDebt = response.data.data;
+        Alert.alert(
+          'Success', 
+          updatedDebt.status === 'Settled' ? 'Debt fully settled!' : `Payment recorded. Remaining: ₹${updatedDebt.remainingAmount}`,
+          [{ text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Debts' }) }]
+        );
+      }
+    } catch (error) {
+      console.log('Error recording payment details:', error.response?.data);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to record payment. Please check your network or try again.';
+      Alert.alert('Error', errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#F8F9FF]">
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-[#F8F9FF]"
+    >
       {/* Header */}
-      <View className="px-6 pt-14 pb-4 bg-white flex-row justify-between items-center border-b border-[#F0F2FA]">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="flex-row items-center">
+      <View className="px-6 pt-14 pb-4 bg-white flex-row items-center border-b border-[#F0F2FA]">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
           <ChevronLeft size={24} color="#2E3A9D" />
-          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-lg ml-2">Settle Up</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
-          <MoreVertical size={24} color="#2E3A9D" />
-        </TouchableOpacity>
+        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-lg ml-2">Record Payment</Text>
       </View>
 
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
-        {/* Balance Card */}
-        <View className="bg-[#4151C3] rounded-[32px] p-8 mb-10 shadow-lg shadow-blue-500/30">
-           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white/60 text-[10px] uppercase tracking-[1px] mb-2">Total Net Balance</Text>
-           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-3xl mb-4">You owe $230.00 total</Text>
-           <View className="flex-row items-center">
-              <Info size={14} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-white/60 text-[10px] ml-2">Across 4 active trip participants</Text>
+        {/* Debt Info Card */}
+        <View className="bg-[#4151C3] rounded-[32px] p-8 mb-8 shadow-lg shadow-blue-500/30">
+           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white/60 text-[10px] uppercase tracking-[1px] mb-2">Settling with</Text>
+           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-2xl mb-4">{debt.personName}</Text>
+           <View className="flex-row items-center justify-between border-t border-white/10 pt-4">
+              <View>
+                <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-white/60 text-[10px]">Total Original</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg">₹{(debt.amount || 0).toLocaleString()}</Text>
+              </View>
+              <View className="items-end">
+                <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-white/60 text-[10px]">Current Pending</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg">₹{(debt.remainingAmount !== undefined ? debt.remainingAmount : debt.amount || 0).toLocaleString()}</Text>
+              </View>
            </View>
         </View>
 
-        {/* Participants List */}
-        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-lg mb-6">Participants</Text>
-        <View className="mb-10">
-           {participants.map((p) => (
-             <View key={p.id} className="bg-white rounded-3xl p-4 mb-4 flex-row items-center border border-[#F0F2FA] relative overflow-hidden">
-                <View style={{ backgroundColor: p.color, position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 }} />
-                <View className="w-12 h-12 rounded-full bg-[#E0E4F5] items-center justify-center mr-4 ml-1">
-                   <User size={20} color="#2E3A9D" />
-                </View>
-                <View className="flex-1">
-                   <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">{p.name}</Text>
-                   <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[10px]`} style={{ color: p.color }}>{p.amount}</Text>
-                </View>
-                <TouchableOpacity className={`px-5 py-2 rounded-xl ${p.action === 'PAY' ? 'bg-[#2E3A9D]' : 'border border-[#E0E4F5]'}`}>
-                   <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[8px] ${p.action === 'PAY' ? 'text-white' : 'text-[#2E3A9D]'}`}>{p.action}</Text>
-                </TouchableOpacity>
-             </View>
-           ))}
+        {/* Amount Input */}
+        <View className="bg-white rounded-[32px] p-6 mb-8 border border-[#F0F2FA] shadow-sm">
+           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Payment Amount</Text>
+           <View className="flex-row items-center border-b border-[#F0F2FA] pb-4">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-3xl mr-2">₹</Text>
+              <TextInput 
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0.00"
+                keyboardType="numeric"
+                className="text-[#2E3A9D] text-4xl flex-1"
+                style={{ fontFamily: 'Poppins-Bold' }}
+              />
+              <TouchableOpacity 
+                onPress={() => setAmount((debt.remainingAmount !== undefined ? debt.remainingAmount : debt.amount).toString())}
+                className="bg-[#E8EBF8] px-3 py-1.5 rounded-lg"
+              >
+                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-[10px]">FULL</Text>
+              </TouchableOpacity>
+           </View>
+           
+           <View className="mt-6">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase mb-2">Note (Optional)</Text>
+              <TextInput 
+                value={note}
+                onChangeText={setNote}
+                placeholder="E.g. Partial pay for dinner"
+                className="text-[#1A1A1A] border border-[#F0F2FA] rounded-xl px-4 py-3 bg-[#FBFBFF]"
+                style={{ fontFamily: 'Poppins-Regular' }}
+              />
+           </View>
         </View>
 
         {/* Payment Method */}
         <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-lg mb-6">Payment Method</Text>
         <View className="flex-row justify-between mb-12">
            {[
-             { id: 'BANK', name: 'BANK', icon: Landmark },
              { id: 'UPI', name: 'UPI', icon: QrCode },
              { id: 'CASH', name: 'CASH', icon: Wallet },
+             { id: 'BANK', name: 'BANK', icon: Landmark },
            ].map((m) => (
              <TouchableOpacity 
                key={m.id}
@@ -83,17 +147,24 @@ const SettleUpScreen = ({ navigation }) => {
         {/* Confirm Button */}
         <TouchableOpacity 
           onPress={handleConfirm}
+          disabled={loading}
           className="bg-[#2E3A9D] py-5 rounded-[24px] flex-row items-center justify-center shadow-lg shadow-blue-500/50 mb-6"
         >
-           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg mr-2">Confirm Settlement</Text>
-           <CheckCircle2 size={20} color="white" />
+           {loading ? (
+             <ActivityIndicator color="white" />
+           ) : (
+             <>
+               <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg mr-2">Confirm Payment</Text>
+               <CheckCircle2 size={20} color="white" />
+             </>
+           )}
         </TouchableOpacity>
 
-        <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px] text-center px-10">
+        <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px] text-center px-10 mb-10">
            Transactions are recorded but not physically processed through the app.
         </Text>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

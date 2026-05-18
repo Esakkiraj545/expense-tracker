@@ -1,13 +1,15 @@
 const express = require('express');
-const { addExpense, getExpenses } = require('../controllers/expenseController');
+const { addExpense, getTripExpenses, deleteExpense, getExpenses } = require('../controllers/expenseController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.use(protect); // All expense routes are protected
+router.use(protect);
 
 router.route('/')
-  .get(getExpenses)
-  .post(addExpense);
+  .post(addExpense)
+  .get(getExpenses);
+router.route('/trip/:tripId').get(getTripExpenses);
+router.route('/:id').delete(deleteExpense);
 
 module.exports = router;

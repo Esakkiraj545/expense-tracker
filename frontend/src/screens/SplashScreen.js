@@ -52,7 +52,7 @@ const SplashScreen = ({ onFinish }) => {
           <ActivityIndicator size="large" color="#ffffff" style={{ marginBottom: 32 }} />
           
           <Text className="text-blue-300 text-[10px] tracking-[4px] font-semibold uppercase">
-            Secured by Wealthflow
+            Secured by Xpenso
           </Text>
         </View>
       </LinearGradient>

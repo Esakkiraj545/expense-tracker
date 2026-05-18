@@ -50,7 +50,14 @@ const SignUpScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-10 pb-10">
-          <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-2xl mb-8">WealthFlow</Text>
+          <View className="flex-row items-center mb-8">
+            <Image 
+              source={require('../../assets/logo.png')} 
+              className="w-10 h-10 rounded-2xl mr-3" 
+              resizeMode="contain" 
+            />
+            <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-2xl">Xpenso</Text>
+          </View>
           
           <View className="items-center mb-8">
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-2xl">Create Account</Text>
@@ -141,18 +148,6 @@ const SignUpScreen = ({ navigation }) => {
               <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-lg">
                 {loading ? 'Creating Account...' : 'Sign Up'}
               </Text>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-[1px] bg-[#E0E4F5]" />
-              <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="mx-4 text-[#8A94A6] text-[10px]">OR CONTINUE WITH</Text>
-              <View className="flex-1 h-[1px] bg-[#E0E4F5]" />
-            </View>
-
-            <TouchableOpacity className="flex-row items-center justify-center border border-[#E0E4F5] py-3 rounded-2xl bg-white">
-              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} style={{ width: 20, height: 20 }} />
-              <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="ml-2 text-[#444B59]">Sign Up with Google</Text>
             </TouchableOpacity>
           </View>
 

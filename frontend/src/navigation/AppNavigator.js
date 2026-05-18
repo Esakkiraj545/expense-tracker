@@ -12,6 +12,8 @@ import TripDetailScreen from '../screens/TripDetailScreen';
 import SettleUpScreen from '../screens/SettleUpScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import PersonalInformationScreen from '../screens/PersonalInformationScreen';
+import NotificationScreen from '../screens/NotificationScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import OTPScreen from '../screens/OTPScreen';
 import ExpenseDetailScreen from '../screens/ExpenseDetailScreen';
@@ -60,6 +62,8 @@ const AppNavigator = ({ initialRoute }) => {
       <Stack.Screen name="TripDetail" component={TripDetailScreen} />
       <Stack.Screen name="SettleUp" component={SettleUpScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
+      <Stack.Screen name="Notifications" component={NotificationScreen} />
 
 
     </Stack.Navigator>

@@ -47,7 +47,7 @@ const ExpenseDetailScreen = ({ route, navigation }) => {
              <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-xs mb-6">{expense.note || 'No description provided'}</Text>
              
              <View className="flex-row items-center">
-                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-4xl">₹{parseFloat(expense.amount).toLocaleString()}</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-4xl">₹{parseFloat(expense.amount || 0).toLocaleString()}</Text>
              </View>
           </View>
         </View>

@@ -21,6 +21,22 @@ const UserSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
+  phone: {
+    type: String,
+    default: ''
+  },
+  dob: {
+    type: String,
+    default: ''
+  },
+  bio: {
+    type: String,
+    default: ''
+  },
+  profileImage: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

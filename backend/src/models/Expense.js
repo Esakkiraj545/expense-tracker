@@ -1,18 +1,23 @@
 const mongoose = require('mongoose');
 
 const expenseSchema = new mongoose.Schema({
-  user: {
+  paidBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
+  trip: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Trip',
+    required: true,
+  },
   amount: {
-    type: String,
-    default: '0',
+    type: Number,
+    required: true,
   },
   category: {
     type: String,
-    default: 'Uncategorized',
+    required: true,
   },
   otherCategory: {
     type: String,
