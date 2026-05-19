@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "frontend",
+    "name": "Xpenso",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,15 +20,27 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.esakkiraj0215.frontend"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-secure-store",
-      "@react-native-community/datetimepicker"
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "994457ec-835c-405d-86c4-a8923cc9f928"
+      }
+    },
+    "owner": "esakkiraj0215",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/994457ec-835c-405d-86c4-a8923cc9f928"
+    }
   }
 }

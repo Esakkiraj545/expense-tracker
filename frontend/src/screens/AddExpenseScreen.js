@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Image } from 'react-native';
-import { ChevronLeft, Utensils, Home, Car, Fuel, ShoppingBag, Plus, Calendar, CreditCard, Wallet, Smartphone, Camera, X, Check, Save, User } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Image, Modal } from 'react-native';
+import { ChevronLeft, Utensils, Home, Car, Fuel, ShoppingBag, Plus, Calendar, CreditCard, Wallet, Smartphone, Camera, X, Check, Save, User, ChevronDown } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
@@ -21,7 +21,12 @@ const PAYMENT_METHODS = [
 ];
 
 const AddExpenseScreen = ({ route, navigation }) => {
-  const { tripId } = route.params;
+  const { tripId } = route.params || {};
+  const [selectedTripId, setSelectedTripId] = useState(tripId || '');
+  const [trips, setTrips] = useState([]);
+  const [showTripModal, setShowTripModal] = useState(false);
+  const [tripsLoading, setTripsLoading] = useState(false);
+
   const [trip, setTrip] = useState(null);
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Food');
@@ -33,11 +38,44 @@ const AddExpenseScreen = ({ route, navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   
+  // Fetch all trips if no specific tripId was passed
   React.useEffect(() => {
+    const fetchAllTrips = async () => {
+      if (tripId) return; // Open from a specific trip, no need to fetch all
+      setTripsLoading(true);
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setTrips(response.data.data);
+          if (response.data.data.length > 0) {
+            setSelectedTripId(response.data.data[0]._id);
+          } else {
+            Alert.alert(
+              'No Trips Found',
+              'You need to create a trip first before adding an expense.',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          }
+        }
+      } catch (error) {
+        console.log('Error fetching all trips:', error);
+      } finally {
+        setTripsLoading(false);
+      }
+    };
+    fetchAllTrips();
+  }, [tripId]);
+
+  // Fetch the selected trip's members and details
+  React.useEffect(() => {
+    if (!selectedTripId) return;
     const fetchTripMembers = async () => {
       try {
         const token = await SecureStore.getItemAsync('userToken');
-        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips/${tripId}`, {
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips/${selectedTripId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success) {
@@ -46,13 +84,18 @@ const AddExpenseScreen = ({ route, navigation }) => {
           setSelectedPayer(response.data.data.owner._id);
         }
       } catch (error) {
-        console.log('Error fetching trip members');
+        console.log('Error fetching trip members:', error);
       }
     };
     fetchTripMembers();
-  }, [tripId]);
+  }, [selectedTripId]);
 
   const handleSaveExpense = async () => {
+    if (!selectedTripId) {
+      Alert.alert('Error', 'Please select a trip');
+      return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert('Error', 'Please enter a valid amount');
       return;
@@ -67,7 +110,7 @@ const AddExpenseScreen = ({ route, navigation }) => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/expenses`, {
-        trip: tripId,
+        trip: selectedTripId,
         amount: parseFloat(amount),
         category: selectedCategory === 'Others' ? customCategory : selectedCategory,
         paymentMethod,
@@ -131,6 +174,27 @@ const AddExpenseScreen = ({ route, navigation }) => {
         </View>
 
         <View className="p-6">
+          {/* Trip Selection - Only when not opened from a specific trip */}
+          {!tripId && (
+            <View className="mb-8">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">Select Trip</Text>
+              <TouchableOpacity 
+                onPress={() => setShowTripModal(true)}
+                className="bg-white border border-[#E0E4F5] rounded-2xl px-4 py-4 shadow-sm flex-row items-center justify-between"
+              >
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-full bg-[#EBF0FF] items-center justify-center mr-3">
+                    <Text className="text-[#2E3A9D] font-bold text-xs">✈️</Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Poppins-SemiBold' }} className="text-[#1A1A1A] text-sm">
+                    {trip ? trip.tripName : 'Select a Trip...'}
+                  </Text>
+                </View>
+                <ChevronDown size={18} color="#2E3A9D" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Who Paid Section - Only for Group Trips */}
           {trip && trip.tripType !== 'solo' && (
             <View className="mb-8">
@@ -260,6 +324,53 @@ const AddExpenseScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Trip Selector Modal */}
+      <Modal
+        visible={showTripModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTripModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-white rounded-t-[32px] p-6 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-lg">Select a Trip</Text>
+              <TouchableOpacity onPress={() => setShowTripModal(false)} className="p-2">
+                <X size={20} color="#2E3A9D" />
+              </TouchableOpacity>
+            </View>
+
+            {tripsLoading ? (
+              <ActivityIndicator size="large" color="#2E3A9D" className="my-10" />
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
+                {trips.map((t) => (
+                  <TouchableOpacity
+                    key={t._id}
+                    onPress={() => {
+                      setSelectedTripId(t._id);
+                      setShowTripModal(false);
+                    }}
+                    className={`p-4 rounded-2xl mb-3 flex-row items-center justify-between border-2 ${selectedTripId === t._id ? 'bg-[#EBF0FF] border-[#2E3A9D]' : 'bg-[#F8F9FF] border-[#F0F2FA]'}`}
+                  >
+                    <View className="flex-row items-center">
+                      <View className="w-10 h-10 rounded-full bg-white items-center justify-center mr-3 shadow-sm">
+                        <Text className="text-lg">✈️</Text>
+                      </View>
+                      <View>
+                        <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">{t.tripName}</Text>
+                        <Text style={{ fontFamily: 'Poppins-Regular' }} className="text-[#8A94A6] text-[10px]">{t.tripType === 'solo' ? 'Solo Trip' : 'Group Trip'}</Text>
+                      </View>
+                    </View>
+                    {selectedTripId === t._id && <Check size={18} color="#2E3A9D" />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
