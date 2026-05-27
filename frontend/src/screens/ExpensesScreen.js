@@ -37,17 +37,44 @@ const ExpensesScreen = ({ navigation }) => {
   const fetchExpenses = async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const [expensesRes, profileRes] = await Promise.all([
+      const [expensesRes, profileRes, tripsRes] = await Promise.all([
         axios.get(`${process.env.EXPO_PUBLIC_API_URL}/expenses`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => null),
+        axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips`, {
+          headers: { Authorization: `Bearer ${token}` }
         }).catch(() => null)
       ]);
 
       if (expensesRes.data.success) {
-        setExpenses(expensesRes.data.data);
+        let personalExpenses = expensesRes.data.data;
+        if (tripsRes && tripsRes.data?.success) {
+           const personalTrip = tripsRes.data.data.find(t => t.tripName === 'Personal Expenses');
+           if (personalTrip) {
+             const personalTripId = personalTrip._id.toString();
+             // Filter to only show expenses that belong to the 'Personal Expenses' trip (or expenses with no trip)
+             personalExpenses = personalExpenses.filter(exp => {
+               const expTripId = typeof exp.trip === 'object' && exp.trip !== null ? exp.trip._id?.toString() : exp.trip?.toString();
+               return !expTripId || expTripId === personalTripId;
+             });
+           } else {
+             // If for some reason the Personal Expenses trip doesn't exist, maybe filter out expenses that have ANY trip that is not 'Personal Expenses'
+             // (But usually it should exist if they added personal expenses)
+           }
+        }
+        
+        // Also just to be safe if the backend populates trip, filter out any trip not named 'Personal Expenses'
+        personalExpenses = personalExpenses.filter(exp => {
+          if (exp.trip && typeof exp.trip === 'object' && exp.trip.tripName) {
+            return exp.trip.tripName === 'Personal Expenses';
+          }
+          return true;
+        });
+
+        setExpenses(personalExpenses);
       }
       if (profileRes && profileRes.data?.success) {
         setProfileImage(profileRes.data.data.profileImage || '');
@@ -195,7 +222,7 @@ const ExpensesScreen = ({ navigation }) => {
       >
         {/* Custom Date Picker Section */}
         {selectedTimeFilter === 'Custom' && (
-          <View className="mx-6 mt-6 bg-white p-6 rounded-[32px] border border-[#F0F2FA] shadow-sm">
+          <View className="mx-6 mt-6 bg-white p-6 rounded-2xl border border-[#F0F2FA] shadow-sm">
              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm mb-4">Custom Date Range</Text>
              <View className="flex-row justify-between">
                 <TouchableOpacity onPress={() => setShowStartPicker(true)} className="bg-[#F8F9FF] p-4 rounded-2xl w-[48%] border border-[#E0E4F5]">
@@ -240,7 +267,7 @@ const ExpensesScreen = ({ navigation }) => {
                   <TouchableOpacity 
                     key={item._id || i} 
                     onPress={() => navigation.navigate('ExpenseDetail', { expense: item })}
-                    className="bg-white p-4 rounded-3xl border border-[#F0F2FA] flex-row items-center mb-4 relative overflow-hidden shadow-sm"
+                    className="bg-white p-4 rounded-xl border border-[#F0F2FA] flex-row items-center mb-4 relative overflow-hidden shadow-sm"
                   >
                     <View className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#FF5252]" />
                     <View style={{ backgroundColor: catInfo.bg }} className="p-3 rounded-2xl mr-4 ml-1">
@@ -262,7 +289,7 @@ const ExpensesScreen = ({ navigation }) => {
 
           {/* Summary Card */}
           {filteredExpenses.length > 0 && (
-            <View className="bg-[#2E3A9D] rounded-[32px] p-6 mt-10 mb-32 flex-row justify-between items-center shadow-lg">
+            <View className="bg-[#2E3A9D] rounded-2xl p-6 mt-10 mb-32 flex-row justify-between items-center shadow-lg">
               <View>
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white/60 text-[10px] uppercase tracking-[1px]">Total Selected Period</Text>
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-white text-2xl">₹{(totalAmount || 0).toLocaleString()}</Text>

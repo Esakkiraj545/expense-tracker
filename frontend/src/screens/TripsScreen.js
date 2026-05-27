@@ -25,7 +25,8 @@ const TripsScreen = ({ navigation }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
-        setTrips(response.data.data);
+        // Filter out the auto-generated 'Personal Expenses' background trip so it doesn't show in the UI
+        setTrips(response.data.data.filter(trip => trip.tripName !== 'Personal Expenses'));
       }
     } catch (error) {
       console.log('Error fetching trips:', error);
@@ -132,7 +133,7 @@ const TripsScreen = ({ navigation }) => {
             <TouchableOpacity 
               key={trip._id}
               onPress={() => navigation.navigate('TripDetail', { tripId: trip._id })}
-              className="bg-white rounded-[32px] mb-8 overflow-hidden shadow-sm border border-[#F0F2FA]"
+              className="bg-white rounded-2xl mb-8 overflow-hidden shadow-sm border border-[#F0F2FA]"
               activeOpacity={0.9}
             >
               {/* Trip Image Header */}
@@ -251,7 +252,7 @@ const TripsScreen = ({ navigation }) => {
         onRequestClose={() => setDeleteModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
-          <View className="bg-white w-full rounded-[32px] p-6 items-center shadow-2xl border border-[#F0F2FA]">
+          <View className="bg-white w-full rounded-2xl p-6 items-center shadow-2xl border border-[#F0F2FA]">
             {/* Header Icon */}
             <View className="bg-red-50 p-5 rounded-full mb-6">
               <Trash2 size={36} color="#FF5252" />

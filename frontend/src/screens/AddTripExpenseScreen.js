@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Platform, KeyboardAvoidingView } from 'react-native';
-import { Utensils, Home, Car, Fuel, ShoppingBag, Plus, Calendar, CreditCard, Wallet, Smartphone, Camera, X, Check, Save } from 'lucide-react-native';
+import { Utensils, Home, Car, Fuel, ShoppingBag, Plus, Calendar, CreditCard, Wallet, Smartphone, Camera, X, Check, Save, User } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
@@ -20,11 +20,12 @@ const PAYMENT_METHODS = [
   { id: 'Card', name: 'Card', icon: CreditCard },
 ];
 
-const AddExpenseScreen = ({ route, navigation }) => {
-  const { expense } = route.params || {};
+const AddTripExpenseScreen = ({ route, navigation }) => {
+  const { tripId, expense } = route.params || {};
   const isEditMode = !!expense;
 
-  const [selectedTripId, setSelectedTripId] = useState(expense ? (expense.trip?._id || expense.trip) : '');
+  const [selectedTripId, setSelectedTripId] = useState(expense ? (expense.trip?._id || expense.trip) : (tripId || ''));
+  const [trip, setTrip] = useState(null);
   const [amount, setAmount] = useState(expense ? expense.amount.toString() : '');
   const [selectedCategory, setSelectedCategory] = useState(
     expense 
@@ -41,54 +42,32 @@ const AddExpenseScreen = ({ route, navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Auto-select or Auto-create 'Personal Expenses' default background trip
+  // Fetch the selected trip's members and details
   React.useEffect(() => {
-    const initPersonalTrip = async () => {
-      if (isEditMode) return;
+    if (!selectedTripId) return;
+    const fetchTripMembers = async () => {
       try {
         const token = await SecureStore.getItemAsync('userToken');
-        
-        // 1. Fetch user to get user ID for setting selectedPayer
-        const meRes = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (meRes.data.success) {
-          setSelectedPayer(meRes.data.data._id);
-        }
-
-        // 2. Fetch trips to find 'Personal Expenses'
-        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips`, {
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/trips/${selectedTripId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success) {
-          const personalTrip = response.data.data.find(t => t.tripName === 'Personal Expenses');
-          if (personalTrip) {
-            setSelectedTripId(personalTrip._id);
-          } else {
-            // Auto-create a default 'Personal Expenses' trip
-            const createTripRes = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/trips`, {
-              tripName: 'Personal Expenses',
-              tripType: 'solo',
-              startDate: new Date(),
-              endDate: new Date()
-            }, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (createTripRes.data.success) {
-              setSelectedTripId(createTripRes.data.data._id);
-            }
+          setTrip(response.data.data);
+          // Set default payer as trip owner if not in edit mode
+          if (!isEditMode) {
+            setSelectedPayer(response.data.data.owner._id);
           }
         }
       } catch (error) {
-        console.log('Error initializing Personal Expenses background trip:', error);
+        console.log('Error fetching trip members:', error);
       }
     };
-    initPersonalTrip();
-  }, []);
+    fetchTripMembers();
+  }, [selectedTripId]);
 
   const handleSaveExpense = async () => {
     if (!selectedTripId) {
-      Alert.alert('Error', 'Initializing background personal account. Please try again.');
+      Alert.alert('Error', 'No active trip association found.');
       return;
     }
 
@@ -121,7 +100,7 @@ const AddExpenseScreen = ({ route, navigation }) => {
         });
 
         if (response.data.success) {
-          Alert.alert('Success', 'Expense updated successfully!', [
+          Alert.alert('Success', 'Trip expense updated successfully!', [
             { 
               text: 'OK', 
               onPress: () => {
@@ -143,14 +122,14 @@ const AddExpenseScreen = ({ route, navigation }) => {
         });
 
         if (response.data.success) {
-          Alert.alert('Success', 'Expense added successfully!', [
+          Alert.alert('Success', 'Trip expense added successfully!', [
             { text: 'OK', onPress: () => navigation.goBack() }
           ]);
         }
       }
     } catch (error) {
-      console.log('Error saving expense:', error);
-      Alert.alert('Error', isEditMode ? 'Failed to update expense' : 'Failed to add expense');
+      console.log('Error saving trip expense:', error);
+      Alert.alert('Error', isEditMode ? 'Failed to update trip expense' : 'Failed to add trip expense');
     } finally {
       setLoading(false);
     }
@@ -161,8 +140,8 @@ const AddExpenseScreen = ({ route, navigation }) => {
     if (selectedDate) setDate(selectedDate);
   };
 
-  const headerTitle = isEditMode ? 'Edit Expense' : 'Add Expense';
-  const buttonTitle = isEditMode ? 'Update Expense' : 'Add Expense';
+  const headerTitle = isEditMode ? 'Trip Edit Expense' : 'Trip Add Expense';
+  const buttonTitle = isEditMode ? 'Save Trip Changes' : 'Add Trip Expense';
 
   return (
     <KeyboardAvoidingView 
@@ -199,6 +178,41 @@ const AddExpenseScreen = ({ route, navigation }) => {
         </View>
 
         <View className="p-6">
+          {/* Who Paid Section - Only for Group Trips */}
+          {trip && trip.tripType !== 'solo' && (
+            <View className="mb-8">
+              <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Who Paid?</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-2 px-2">
+                {/* Owner */}
+                <TouchableOpacity 
+                  onPress={() => setSelectedPayer(trip.owner._id)}
+                  className={`items-center mr-4 p-3 rounded-2xl border-2 ${selectedPayer === trip.owner._id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+                >
+                  <View className={`w-10 h-10 rounded-full items-center justify-center mb-1 ${selectedPayer === trip.owner._id ? 'bg-white/20' : 'bg-[#E0E4F5]'}`}>
+                    <User size={20} color={selectedPayer === trip.owner._id ? 'white' : '#2E3A9D'} />
+                  </View>
+                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[8px] ${selectedPayer === trip.owner._id ? 'text-white' : 'text-[#444B59]'}`}>You</Text>
+                </TouchableOpacity>
+
+                {/* Other Members who have joined */}
+                {trip.members.filter(m => m.status === 'joined' && m.user).map((member) => (
+                  <TouchableOpacity 
+                    key={member.user._id}
+                    onPress={() => setSelectedPayer(member.user._id)}
+                    className={`items-center mr-4 p-3 rounded-2xl border-2 ${selectedPayer === member.user._id ? 'bg-[#2E3A9D] border-[#2E3A9D]' : 'bg-white border-[#F0F2FA]'}`}
+                  >
+                    <View className={`w-10 h-10 rounded-full items-center justify-center mb-1 ${selectedPayer === member.user._id ? 'bg-white/20' : 'bg-[#E0E4F5]'}`}>
+                      <User size={20} color={selectedPayer === member.user._id ? 'white' : '#2E3A9D'} />
+                    </View>
+                    <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-[8px] ${selectedPayer === member.user._id ? 'text-white' : 'text-[#444B59]'}`}>
+                      {member.user.name || member.email.split('@')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Category Section */}
           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-4">Category</Text>
           <View className="flex-row flex-wrap justify-between mb-6">
@@ -304,4 +318,4 @@ const AddExpenseScreen = ({ route, navigation }) => {
   );
 };
 
-export default AddExpenseScreen;
+export default AddTripExpenseScreen;

@@ -123,7 +123,7 @@ const AddDebtScreen = ({ navigation }) => {
           </View>
 
           {/* Form Card */}
-          <View className="bg-white rounded-[32px] p-6 shadow-sm border border-[#F0F2FA] mb-6">
+          <View className="bg-white rounded-2xl p-6 shadow-sm border border-[#F0F2FA] mb-6">
             {/* Person Name */}
             <View className="mb-6">
               <View className="flex-row items-center mb-2">
@@ -213,7 +213,7 @@ const AddDebtScreen = ({ navigation }) => {
           </View>
 
           {/* Reminder Section */}
-          <View className="bg-white rounded-[32px] p-6 shadow-sm border border-[#F0F2FA] mb-10">
+          <View className="bg-white rounded-2xl p-6 shadow-sm border border-[#F0F2FA] mb-10">
             <View className="flex-row justify-between items-center mb-6">
               <View className="flex-row items-center flex-1">
                 <View className="bg-[#FFF5E6] p-3 rounded-2xl mr-4">
@@ -267,7 +267,7 @@ const AddDebtScreen = ({ navigation }) => {
         <TouchableOpacity 
           onPress={handleSave} 
           disabled={loading}
-          className="flex-[2] py-4 bg-[#2E3A9D] rounded-3xl items-center px-10 shadow-lg shadow-blue-500/50 flex-row justify-center"
+          className="flex-[2] py-4 bg-[#2E3A9D] rounded-xl items-center px-10 shadow-lg shadow-blue-500/50 flex-row justify-center"
         >
           {loading ? (
             <ActivityIndicator color="white" size="small" />

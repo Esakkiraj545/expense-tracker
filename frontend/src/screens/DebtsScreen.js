@@ -122,11 +122,11 @@ const DebtsScreen = ({ navigation }) => {
       >
         {/* Summary Row */}
         <View className="flex-row justify-between mt-6">
-          <View className="bg-white rounded-3xl p-5 w-[48%] shadow-sm border border-[#F0F2FA]">
+          <View className="bg-white rounded-xl p-5 w-[48%] shadow-sm border border-[#F0F2FA]">
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">To Pay</Text>
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-2xl">₹{(totals.pending || 0).toLocaleString()}</Text>
           </View>
-          <View className="bg-white rounded-3xl p-5 w-[48%] shadow-sm border border-[#F0F2FA]">
+          <View className="bg-white rounded-xl p-5 w-[48%] shadow-sm border border-[#F0F2FA]">
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#8A94A6] text-[10px] uppercase tracking-[1px] mb-2">To Receive</Text>
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-2xl">₹{(totals.given || 0).toLocaleString()}</Text>
           </View>
@@ -158,7 +158,7 @@ const DebtsScreen = ({ navigation }) => {
               <TouchableOpacity 
                 key={item._id} 
                 onPress={() => navigation.navigate('DebtDetail', { debt: item })}
-                className="bg-white rounded-[32px] p-5 mb-5 shadow-sm border border-[#F0F2FA] flex-row items-center"
+                className="bg-white rounded-xl p-5 mb-5 shadow-sm border border-[#F0F2FA] flex-row items-center"
               >
                 {/* Left Side: Avatar */}
                 <View className="bg-[#F8F9FF] w-14 h-14 rounded-2xl items-center justify-center border border-[#F0F2FA]">

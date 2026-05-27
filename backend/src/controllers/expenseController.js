@@ -115,3 +115,34 @@ exports.getExpenses = async (req, res) => {
   }
 };
 
+// @desc    Update an existing expense
+exports.updateExpense = async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    if (!expense) {
+      return res.status(404).json({ success: false, message: 'Expense not found' });
+    }
+
+    const oldAmount = expense.amount;
+    const newAmount = req.body.amount !== undefined ? req.body.amount : oldAmount;
+
+    // Update the expense
+    const updatedExpense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    }).populate('paidBy', 'name email');
+
+    // Update trip total if amount changed
+    if (newAmount !== oldAmount) {
+      const difference = newAmount - oldAmount;
+      await Trip.findByIdAndUpdate(expense.trip, {
+        $inc: { totalExpenses: difference }
+      });
+    }
+
+    res.status(200).json({ success: true, data: updatedExpense });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

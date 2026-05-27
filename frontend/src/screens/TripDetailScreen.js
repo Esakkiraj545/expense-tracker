@@ -13,7 +13,6 @@ const TripDetailScreen = ({ route, navigation }) => {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('expenses');
   const [expandedExpenseId, setExpandedExpenseId] = useState(null);
 
   const fetchTripData = async () => {
@@ -122,7 +121,7 @@ const TripDetailScreen = ({ route, navigation }) => {
         <View className="p-6 pt-8">
           {/* Quick Stats Cards */}
           <View className="flex-row justify-between mb-6">
-             <View className="bg-white rounded-[32px] p-4 w-[31%] shadow-sm border border-[#F0F2FA] items-center">
+             <View className="bg-white rounded-xl p-4 w-[31%] shadow-sm border border-[#F0F2FA] items-center">
                 <View className="bg-[#E8EBF8] w-7 h-7 rounded-full items-center justify-center mb-2">
                    <Wallet size={14} color="#2E3A9D" />
                 </View>
@@ -130,15 +129,15 @@ const TripDetailScreen = ({ route, navigation }) => {
                 <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[8px] uppercase tracking-wider text-center">Budget</Text>
              </View>
 
-             <View className="bg-white rounded-[32px] p-4 w-[31%] shadow-sm border border-[#F0F2FA] items-center">
+             <View className="bg-white rounded-xl p-4 w-[31%] shadow-sm border border-[#F0F2FA] items-center">
                 <View className="bg-[#FFE5E5] w-7 h-7 rounded-full items-center justify-center mb-2">
                    <PieChart size={14} color="#FF5252" />
                 </View>
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#FF5252] text-[11px] text-center">₹{(trip.totalExpenses || 0).toLocaleString()}</Text>
-                <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[8px] uppercase tracking-wider text-center">Xpenso</Text>
+                <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[8px] uppercase tracking-wider text-center">Expense</Text>
              </View>
 
-             <View style={{ backgroundColor: trip.budget - (trip.totalExpenses || 0) >= 0 ? '#E8F5E9' : '#FFE5E5' }} className="rounded-[32px] p-4 w-[31%] items-center shadow-sm border border-[#F0F2FA]">
+              <View style={{ backgroundColor: trip.budget - (trip.totalExpenses || 0) >= 0 ? '#E8F5E9' : '#FFE5E5' }} className="rounded-xl p-4 w-[31%] items-center shadow-sm border border-[#F0F2FA]">
                 <View className="bg-white w-7 h-7 rounded-full items-center justify-center mb-2 shadow-sm">
                    <Info size={14} color={trip.budget - (trip.totalExpenses || 0) >= 0 ? '#4CAF50' : '#FF5252'} />
                 </View>
@@ -150,7 +149,7 @@ const TripDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* Budget Progress Bar */}
-          <View className="bg-white rounded-3xl p-6 mb-6 shadow-sm border border-[#F0F2FA]">
+          <View className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-[#F0F2FA]">
              <View className="flex-row justify-between items-center mb-3">
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">Budget Progress</Text>
                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-xs">{spentPercentage.toFixed(0)}%</Text>
@@ -184,7 +183,7 @@ const TripDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* Members Avatars & Info scroll list */}
-          <View className="bg-white rounded-3xl p-5 mb-6 shadow-sm border border-[#F0F2FA]">
+          <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-[#F0F2FA]">
             <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-[10px] uppercase tracking-wider mb-3">Trip Collaborators</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
               {/* Owner Avatar */}
@@ -239,27 +238,8 @@ const TripDetailScreen = ({ route, navigation }) => {
             </ScrollView>
           </View>
 
-          {/* Tabs - Only show for Group Trips */}
-          {trip.tripType !== 'solo' && (
-            <View className="flex-row mb-6 bg-[#E0E4F5] p-1.5 rounded-2xl">
-               <TouchableOpacity 
-                 onPress={() => setActiveTab('expenses')}
-                 className={`flex-1 py-3 rounded-xl items-center ${activeTab === 'expenses' ? 'bg-white shadow-sm' : ''}`}
-               >
-                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-xs ${activeTab === 'expenses' ? 'text-[#2E3A9D]' : 'text-[#8A94A6]'}`}>Xpenso</Text>
-               </TouchableOpacity>
-               <TouchableOpacity 
-                 onPress={() => setActiveTab('members')}
-                 className={`flex-1 py-3 rounded-xl items-center ${activeTab === 'members' ? 'bg-white shadow-sm' : ''}`}
-               >
-                  <Text style={{ fontFamily: 'Poppins-Bold' }} className={`text-xs ${activeTab === 'members' ? 'text-[#2E3A9D]' : 'text-[#8A94A6]'}`}>Members</Text>
-               </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Tab Content */}
-          {(activeTab === 'expenses' || trip.tripType === 'solo') ? (
-            <View>
+          {/* Content */}
+          <View>
               {expenses.length > 0 ? (
                 expenses.map((exp) => {
                   const cat = getCategoryIcon(exp.category);
@@ -275,7 +255,7 @@ const TripDetailScreen = ({ route, navigation }) => {
                       key={exp._id}
                       activeOpacity={0.9}
                       onPress={() => setExpandedExpenseId(expandedExpenseId === exp._id ? null : exp._id)}
-                      className="bg-white rounded-3xl p-4 mb-3 border border-[#F0F2FA] shadow-sm overflow-hidden"
+                      className="bg-white rounded-xl p-4 mb-3 border border-[#F0F2FA] shadow-sm overflow-hidden"
                     >
                       <View className="flex-row items-center">
                          <View style={{ backgroundColor: cat.color + '20' }} className="p-3 rounded-2xl mr-4">
@@ -306,7 +286,7 @@ const TripDetailScreen = ({ route, navigation }) => {
 
                       {/* Accordion Split Details Panel */}
                       {expandedExpenseId === exp._id && (
-                        <View className="mt-4 pt-4 border-t border-[#F8F9FF] bg-[#F8F9FF] -mx-4 -mb-4 p-4 rounded-b-3xl">
+                        <View className="mt-4 pt-4 border-t border-[#F8F9FF] bg-[#F8F9FF] -mx-4 -mb-4 p-4 rounded-b-xl">
                           <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-[9px] uppercase tracking-wider mb-3">Individual Split Breakdown ({totalParticipantCount} People)</Text>
                           
                           {/* Owner Split */}
@@ -355,79 +335,23 @@ const TripDetailScreen = ({ route, navigation }) => {
                 })
               ) : (
                 /* Empty state for expenses */
-                <View className="bg-white rounded-3xl p-10 items-center border border-dashed border-[#E0E4F5]">
+                <View className="bg-white rounded-xl p-10 items-center border border-dashed border-[#E0E4F5]">
                    <View className="bg-[#F8F9FF] p-4 rounded-full mb-4">
                       <Utensils size={32} color="#E0E4F5" />
                    </View>
-                   <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-sm mb-1">No Xpenso yet</Text>
-                   <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[10px] text-center">Tap the + button to add your first Xpenso for this trip.</Text>
+                   <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-sm mb-1">No Expense yet</Text>
+                   <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[10px] text-center">Tap the + button to add your first expense for this trip.</Text>
                 </View>
               )}
             </View>
-          ) : (
-            <View>
-              {/* Trip Members List with Contributions */}
-              <View className="bg-white rounded-3xl p-2 border border-[#F0F2FA] shadow-sm">
-                {/* Owner Contribution */}
-                <View className="px-4 py-4 border-b border-[#F8F9FF] flex-row items-center">
-                   <View className="w-10 h-10 rounded-full bg-[#E8F5E9] items-center justify-center mr-3 overflow-hidden border border-[#4CAF50]/20">
-                      {trip.owner.profileImage ? (
-                        <Image source={{ uri: trip.owner.profileImage }} className="w-full h-full" resizeMode="cover" />
-                      ) : (
-                        <User size={18} color="#4CAF50" />
-                      )}
-                   </View>
-                   <View className="flex-1">
-                      <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">You (Admin)</Text>
-                      <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[10px]">{trip.owner.email}</Text>
-                   </View>
-                   <View className="items-end">
-                      <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-sm">₹{expenses.filter(e => e.paidBy?._id === trip.owner._id).reduce((sum, e) => sum + e.amount, 0).toLocaleString()}</Text>
-                      <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[8px]">Paid</Text>
-                   </View>
-                </View>
 
-                {/* Member Contributions */}
-                {trip.members.map((member, index) => {
-                  const memberPaid = expenses.filter(e => e.paidBy?._id === member.user?._id).reduce((sum, e) => sum + e.amount, 0);
-                  const name = member.user?.name || member.email.split('@')[0];
-                  return (
-                    <View key={index} className="px-4 py-4 border-b border-[#F8F9FF] flex-row items-center">
-                      <View className="w-10 h-10 rounded-full bg-[#F0F2FA] items-center justify-center mr-3 overflow-hidden border border-[#2E3A9D]/20">
-                         {member.user?.profileImage ? (
-                           <Image source={{ uri: member.user.profileImage }} className="w-full h-full" resizeMode="cover" />
-                         ) : (
-                           <User size={18} color="#2E3A9D" />
-                         )}
-                      </View>
-                      <View className="flex-1">
-                         <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">{name}</Text>
-                         <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[10px]">{member.email}</Text>
-                      </View>
-                      <View className="items-end">
-                         <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#1A1A1A] text-sm">₹{memberPaid.toLocaleString()}</Text>
-                         <Text style={{ fontFamily: 'Poppins-Medium' }} className="text-[#8A94A6] text-[8px]">Paid</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-
-              <TouchableOpacity 
-                className="mt-6 flex-row items-center justify-center bg-white p-4 rounded-2xl border border-dashed border-[#2E3A9D]"
-              >
-                 <Plus size={16} color="#2E3A9D" className="mr-2" />
-                 <Text style={{ fontFamily: 'Poppins-Bold' }} className="text-[#2E3A9D] text-xs">Invite More Members</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
         <View className="h-24" />
       </ScrollView>
 
       {/* FAB to Add Expense */}
       <TouchableOpacity 
-        onPress={() => navigation.navigate('AddExpense', { tripId: trip._id })}
+        onPress={() => navigation.navigate('AddTripExpense', { tripId: trip._id })}
         className="absolute bottom-10 right-8 w-16 h-16 bg-[#2E3A9D] rounded-full items-center justify-center shadow-xl shadow-blue-900"
       >
          <Plus size={32} color="white" />
