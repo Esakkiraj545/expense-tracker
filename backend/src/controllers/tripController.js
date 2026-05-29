@@ -10,8 +10,10 @@ exports.createTrip = async (req, res) => {
     } = req.body;
 
     // Process members: Check if emails already have accounts
-    const processedMembers = await Promise.all((members || []).map(async (email) => {
-      const user = await User.findOne({ email });
+    const processedMembers = await Promise.all((members || []).map(async (rawEmail) => {
+      const email = rawEmail.trim().toLowerCase();
+      // Case-insensitive search for user
+      const user = await User.findOne({ email: new RegExp('^' + email + '$', 'i') });
       return {
         email,
         user: user ? user._id : null,
@@ -43,29 +45,41 @@ exports.createTrip = async (req, res) => {
 
 exports.getTrips = async (req, res) => {
   try {
+    const userEmail = req.user.email.toLowerCase();
+    const userEmailRegex = new RegExp('^' + req.user.email + '$', 'i');
+
     // Auto-link pending invites: If a user has registered/logged in and has pending invites matching their email, update status to 'joined' and link their user ID.
-    await Trip.updateMany(
-      { 
-        'members.email': req.user.email,
-        'members.user': null
-      },
-      {
-        $set: { 
-          'members.$[elem].user': req.user.id,
-          'members.$[elem].status': 'joined'
-        }
-      },
-      {
-        arrayFilters: [{ 'elem.email': req.user.email, 'elem.user': null }]
+    const tripsToUpdate = await Trip.find({
+      'members': { 
+        $elemMatch: { 
+          email: userEmailRegex, 
+          user: null 
+        } 
       }
-    );
+    });
+
+    if (tripsToUpdate.length > 0) {
+      for (let trip of tripsToUpdate) {
+        let updated = false;
+        for (let member of trip.members) {
+          if (!member.user && member.email.toLowerCase() === userEmail) {
+            member.user = req.user.id;
+            member.status = 'joined';
+            updated = true;
+          }
+        }
+        if (updated) {
+          await trip.save();
+        }
+      }
+    }
 
     // Fetch trips where user is owner OR a member
     const trips = await Trip.find({
       $or: [
         { owner: req.user.id },
         { 'members.user': req.user.id },
-        { 'members.email': req.user.email } // In case user just signed up with invited email
+        { 'members.email': userEmailRegex } // In case user just signed up with invited email
       ]
     }).populate('owner', 'name email profileImage').populate('members.user', 'name email profileImage').sort('-createdAt');
 
@@ -83,7 +97,7 @@ exports.getTripById = async (req, res) => {
       let updated = false;
       for (let member of rawTrip.members) {
         if (!member.user) {
-          const registeredUser = await User.findOne({ email: member.email });
+          const registeredUser = await User.findOne({ email: new RegExp('^' + member.email + '$', 'i') });
           if (registeredUser) {
             member.user = registeredUser._id;
             member.status = 'joined';
@@ -105,7 +119,11 @@ exports.getTripById = async (req, res) => {
     }
 
     // Check if user has access
-    const isMember = trip.members.some(m => m.user?.toString() === req.user.id || m.email === req.user.email);
+    const userEmailRegex = new RegExp('^' + req.user.email + '$', 'i');
+    const isMember = trip.members.some(m => 
+      (m.user && m.user._id.toString() === req.user.id) || 
+      (m.email && m.email.toLowerCase() === req.user.email.toLowerCase())
+    );
     const isOwner = trip.owner._id.toString() === req.user.id;
 
     if (!isOwner && !isMember) {
@@ -164,11 +182,12 @@ exports.updateTrip = async (req, res) => {
     // Process members if provided
     let processedMembers = trip.members;
     if (members) {
-      processedMembers = await Promise.all((members || []).map(async (email) => {
-        const existingMember = trip.members.find(m => m.email === email);
+      processedMembers = await Promise.all((members || []).map(async (rawEmail) => {
+        const email = rawEmail.trim().toLowerCase();
+        const existingMember = trip.members.find(m => m.email.toLowerCase() === email);
         if (existingMember) return existingMember;
         
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: new RegExp('^' + email + '$', 'i') });
         return {
           email,
           user: user ? user._id : null,
